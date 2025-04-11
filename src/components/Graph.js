@@ -30,7 +30,7 @@ const Graph = () => {
 
   const [start, setStart] = useState(null);
   const [end, setEnd] = useState(null);
-  const [path, setPath] = useState([]); // 🔸 Add this state
+  const [path, setPath] = useState([]); // Add this state
 
   const handleNodeClick = (id) => {
     if (!start) setStart(id);
@@ -43,7 +43,7 @@ const Graph = () => {
 
   const getNodeById = (id) => nodes.find(n => n.id === id);
 
-  // 🔸 This runs Dijkstra when both nodes are selected
+  //  This runs Dijkstra when both nodes are selected
   useEffect(() => {
     if (start && end) {
       const result = dijkstra(nodes, edges, start, end);

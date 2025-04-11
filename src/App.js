@@ -1,11 +1,13 @@
+// src/App.js
 import React from 'react';
 import CustomFlow from './components/CustomFlow';
+import { ReactFlowProvider } from 'reactflow';
 
 function App() {
   return (
-    <div className="App">
+    <ReactFlowProvider>
       <CustomFlow />
-    </div>
+    </ReactFlowProvider>
   );
 }
 

@@ -1,4 +1,3 @@
-// src/components/CustomFlow.js
 import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
   addEdge,
@@ -17,8 +16,8 @@ const templateNodes = [
   { id: 'home', type: 'default', position: { x: 100, y: 100 }, data: { label: '🏠 Home' }, style: { backgroundColor: '#4CAF50', color: 'white', padding: 10, borderRadius: 10 } },
   { id: 'market', type: 'default', position: { x: 300, y: 100 }, data: { label: '🛒 Market' }, style: { backgroundColor: '#2196F3', color: 'white', padding: 10, borderRadius: 10 } },
   { id: 'school', type: 'default', position: { x: 500, y: 300 }, data: { label: '🏫 School' }, style: { backgroundColor: '#FFC107', color: '#000', padding: 10, borderRadius: 10 } },
-  { id: 'road1', type: 'default', position: { x: 200, y: 200 }, data: { label: '🛣️ Road 1' }, style: { backgroundColor: '#9E9E9E', color: 'white', padding: 10, borderRadius: 10 } },
-  { id: 'road2', type: 'default', position: { x: 400, y: 200 }, data: { label: '🛣️ Road 2' }, style: { backgroundColor: '#9E9E9E', color: 'white', padding: 10, borderRadius: 10 } },
+  { id: 'road1', type: 'default', position: { x: 200, y: 200 }, data: { label: '🏬 Mall' }, style: { backgroundColor: '#9E9E9E', color: 'white', padding: 10, borderRadius: 10 } },
+  { id: 'road2', type: 'default', position: { x: 400, y: 200 }, data: { label: '✈️ Airport' }, style: { backgroundColor: '#9E9E9E', color: 'white', padding: 10, borderRadius: 10 } },
 ];
 
 const templateEdges = [
@@ -28,7 +27,6 @@ const templateEdges = [
   { id: 'e4', source: 'road2', target: 'school', label: '4', data: { weight: 4 } },
   { id: 'e5', source: 'road1', target: 'road2', label: '6', data: { weight: 6 } },
 ];
-
 
 const CustomFlow = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState(templateNodes);
@@ -43,6 +41,7 @@ const CustomFlow = () => {
   const [history, setHistory] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [algorithm, setAlgorithm] = useState('dijkstra');
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, node: null });
 
   const addNode = () => {
     const newNode = {
@@ -113,9 +112,9 @@ const CustomFlow = () => {
     setNodes((nds) =>
       nds.map((node) => {
         if (node.id === startNode) {
-          return { ...node, style: { backgroundColor: '#00ff00' } }; // green
+          return { ...node, style: { backgroundColor: '#00ff00' } };
         } else if (node.id === endNode) {
-          return { ...node, style: { backgroundColor: '#ff0000' } }; // red
+          return { ...node, style: { backgroundColor: '#ff0000' } };
         }
         return { ...node, style: {} };
       })
@@ -138,10 +137,10 @@ const CustomFlow = () => {
     } else {
       result = dijkstra(nodes, edges, startNode, endNode);
     }
+
     setShortestPath(result.path);
     setDistance(result.totalDistance);
 
-    // Generate path string from startNode and result.path
     const idToLabel = Object.fromEntries(nodes.map(n => [n.id, n.data.label?.replace(/[^a-zA-Z0-9 ]/g, '')]));
     const fullPath = [startNode, ...result.path.map(p => p[1])];
     setPathString(fullPath.map(id => idToLabel[id] || id).join(' → '));
@@ -171,15 +170,8 @@ const CustomFlow = () => {
   });
 
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
-      <div style={{
-        position: 'fixed',
-        top: 20,
-        left: 20,
-        zIndex: 1000,
-        display: 'flex',
-        gap: '12px'
-      }}>
+    <div style={{ width: '100vw', height: '100vh' }} onClick={() => setContextMenu({ visible: false, x: 0, y: 0, node: null })}>
+      <div style={{ position: 'fixed', top: 20, left: 20, zIndex: 1000, display: 'flex', gap: '12px' }}>
         <button onClick={addNode}>Add Node</button>
         <button onClick={resetGraph}>Reset Graph</button>
         <button onClick={undo}>Undo</button>
@@ -209,7 +201,6 @@ const CustomFlow = () => {
         </div>
       )}
 
-
       <ReactFlow
         nodes={nodes}
         edges={highlightedEdges}
@@ -224,16 +215,14 @@ const CustomFlow = () => {
             setEndNode(null);
           }
         }}
-        onNodeDoubleClick={(event, node) => {
-          const newLabel = prompt('Rename this node:', node.data.label);
-          if (newLabel !== null) {
-            saveHistory();
-            setNodes((nds) =>
-              nds.map((n) =>
-                n.id === node.id ? { ...n, data: { ...n.data, label: newLabel } } : n
-              )
-            );
-          }
+        onNodeContextMenu={(event, node) => {
+          event.preventDefault();
+          setContextMenu({
+            visible: true,
+            x: event.clientX,
+            y: event.clientY,
+            node,
+          });
         }}
         fitView
       >
@@ -241,6 +230,45 @@ const CustomFlow = () => {
         <Controls />
         <Background />
       </ReactFlow>
+
+      {contextMenu.visible && (
+        <div
+          style={{
+            position: 'absolute',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            background: '#fff',
+            padding: '10px',
+            border: '1px solid #ccc',
+            borderRadius: 6,
+            boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+            zIndex: 2000,
+          }}
+        >
+          <div style={{ cursor: 'pointer', marginBottom: 5 }} onClick={() => {
+            const newLabel = prompt('Rename this node:', contextMenu.node.data.label);
+            if (newLabel !== null) {
+              saveHistory();
+              setNodes((nds) =>
+                nds.map((n) =>
+                  n.id === contextMenu.node.id ? { ...n, data: { ...n.data, label: newLabel } } : n
+                )
+              );
+            }
+            setContextMenu({ ...contextMenu, visible: false });
+          }}>✏️ Rename</div>
+
+          <div style={{ cursor: 'pointer', marginBottom: 5 }} onClick={() => {
+            setStartNode(contextMenu.node.id);
+            setContextMenu({ ...contextMenu, visible: false });
+          }}>🟢 Set as Start</div>
+
+          <div style={{ cursor: 'pointer' }} onClick={() => {
+            setEndNode(contextMenu.node.id);
+            setContextMenu({ ...contextMenu, visible: false });
+          }}>🔴 Set as End</div>
+        </div>
+      )}
     </div>
   );
 };
