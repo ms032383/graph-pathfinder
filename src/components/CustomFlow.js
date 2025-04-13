@@ -42,6 +42,12 @@ const CustomFlow = () => {
   const [redoStack, setRedoStack] = useState([]);
   const [algorithm, setAlgorithm] = useState('dijkstra');
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, node: null });
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [renameTargetId, setRenameTargetId] = useState(null);
+  const [showEdgeModal, setShowEdgeModal] = useState(false);
+  const [edgeWeightValue, setEdgeWeightValue] = useState('');
+  const [pendingConnection, setPendingConnection] = useState(null);
 
   const addNode = () => {
     const newNode = {
@@ -91,22 +97,25 @@ const CustomFlow = () => {
   };
 
   const onConnect = useCallback((connection) => {
-    const weight = prompt('Enter weight for this edge:', '1');
-    if (weight === null || isNaN(weight)) return;
-    saveHistory();
-    setEdges((eds) =>
-      addEdge(
-        {
-          ...connection,
-          label: weight,
-          data: { weight: Number(weight) },
-          style: { strokeWidth: 3 },
-          animated: true,
-        },
-        eds
-      )
-    );
-  }, [nodes, edges]);
+    setPendingConnection(connection);
+    setShowEdgeModal(true);
+  }, []);
+  const handleSaveEdgeWeight = () => {
+    if (isNaN(edgeWeightValue) || !pendingConnection) return;
+  
+    const newEdge = {
+      ...pendingConnection,
+      label: edgeWeightValue,
+      data: { weight: Number(edgeWeightValue) },
+      style: { strokeWidth: 3 },
+      animated: true,
+    };
+  
+    setEdges((eds) => addEdge(newEdge, eds));
+    setShowEdgeModal(false);
+    setEdgeWeightValue('');
+    setPendingConnection(null);
+  };
 
   useEffect(() => {
     setNodes((nds) =>
@@ -196,7 +205,7 @@ const CustomFlow = () => {
 
       {distance !== null && (
         <div style={{ position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)', backgroundColor: '#eee', padding: '16px 32px', borderRadius: 12, boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.15)', zIndex: 10 }}>
-          <div style={{ fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>Result</div>
+          <div style={{ fontWeight: 'bold', marginBottom: 8, textAlign: 'center' }}>PATH</div>
           <div style={{ fontSize: 16, color: '#333' }}>{pathString}</div>
         </div>
       )}
@@ -246,16 +255,11 @@ const CustomFlow = () => {
           }}
         >
           <div style={{ cursor: 'pointer', marginBottom: 5 }} onClick={() => {
-            const newLabel = prompt('Rename this node:', contextMenu.node.data.label);
-            if (newLabel !== null) {
-              saveHistory();
-              setNodes((nds) =>
-                nds.map((n) =>
-                  n.id === contextMenu.node.id ? { ...n, data: { ...n.data, label: newLabel } } : n
-                )
-              );
-            }
+            setRenameTargetId(contextMenu.node.id);
+            setRenameValue(contextMenu.node.data.label || '');
+            setShowRenameModal(true);
             setContextMenu({ ...contextMenu, visible: false });
+            
           }}>✏️ Rename</div>
 
           <div style={{ cursor: 'pointer', marginBottom: 5 }} onClick={() => {
@@ -267,8 +271,109 @@ const CustomFlow = () => {
             setEndNode(contextMenu.node.id);
             setContextMenu({ ...contextMenu, visible: false });
           }}>🔴 Set as End</div>
+        
         </div>
       )}
+      {showRenameModal && (
+  <div style={{
+    position: 'fixed',
+    top: 0, left: 0,
+    width: '100vw', height: '100vh',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 3000,
+  }}>
+    <div style={{
+      background: 'white',
+      padding: '24px',
+      borderRadius: '8px',
+      width: '300px',
+      boxShadow: '0px 4px 20px rgba(0,0,0,0.3)'
+    }}>
+      <h3 style={{ marginTop: 0, marginBottom: 16 }}>Rename Node</h3>
+      <input
+        type="text"
+        value={renameValue}
+        onChange={(e) => setRenameValue(e.target.value)}
+        style={{ width: '100%', padding: '8px', fontSize: '14px', marginBottom: '16px' }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+        <button
+          style={{ padding: '6px 12px' }}
+          onClick={() => {
+            setShowRenameModal(false);
+            setRenameValue('');
+            setRenameTargetId(null);
+          }}
+        >
+          Cancel
+        </button>
+        <button
+          style={{ padding: '6px 12px' }}
+          onClick={() => {
+            if (renameValue.trim()) {
+              saveHistory();
+              setNodes((nds) =>
+                nds.map((n) =>
+                  n.id === renameTargetId
+                    ? { ...n, data: { ...n.data, label: renameValue } }
+                    : n
+                )
+              );
+            }
+            setShowRenameModal(false);
+            setRenameValue('');
+            setRenameTargetId(null);
+          }}
+        >
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{showEdgeModal && (
+  <div style={{
+    position: 'fixed',
+    top: 0, left: 0,
+    width: '100vw', height: '100vh',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 9999
+  }}>
+    <div style={{
+      background: '#fff',
+      padding: 24,
+      borderRadius: 8,
+      width: 300,
+      boxShadow: '0px 4px 20px rgba(0,0,0,0.25)'
+    }}>
+      <h3 style={{ marginTop: 0 }}>Enter Edge Weight</h3>
+      <input
+        type="number"
+        value={edgeWeightValue}
+        onChange={(e) => setEdgeWeightValue(e.target.value)}
+        placeholder="e.g. 5"
+        style={{ width: '100%', padding: '8px', fontSize: 14, marginBottom: 16 }}
+      />
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <button onClick={() => {
+          setShowEdgeModal(false);
+          setEdgeWeightValue('');
+          setPendingConnection(null);
+        }}>Cancel</button>
+        <button onClick={handleSaveEdgeWeight}>Save</button>
+      </div>
+    </div>
+  </div>
+)}
+
+
     </div>
   );
 };
